@@ -144,4 +144,17 @@ public class CartService {
         }
         cartItemRepository.delete(item);
     }
+
+    @Transactional 
+    public void changeQuantity(Long itemId, Long userId, int change) {
+        CartItem item = cartItemRepository.findByIdAndCart_User_Id(itemId, userId)
+        .orElseThrow(() -> new ResourceNotFoundException("Item not found!"));
+
+        int newQuantity = item.getQuantity() + change;
+        if (newQuantity <=0) {
+            cartItemRepository.delete(item);
+        }else {
+                item.setQuantity(newQuantity);
+            }
+    }
 }

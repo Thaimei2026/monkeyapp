@@ -565,6 +565,10 @@ textarea:focus {
   font-weight: 800;
 }
 
+.cart-quantity-control {
+  flex: 0 0 auto;
+}
+
 .back-link {
   display: inline-flex;
   gap: 8px;
@@ -833,6 +837,19 @@ textarea:focus {
 
 .seller-form {
   align-self: stretch;
+}
+
+.restock-form {
+  grid-template-columns: minmax(220px, 1fr) minmax(120px, 160px) auto;
+  align-items: end;
+}
+
+.restock-product-field {
+  min-width: 0;
+}
+
+.restock-form .button {
+  min-width: 132px;
 }
 
 .form-heading {
@@ -1479,6 +1496,7 @@ select:disabled {
 
   .status-control.compact,
   .bulk-actions,
+  .restock-form,
   .seller-product-tools,
   .seller-order-tools,
   .store-search-panel,

@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import com.thaimei.myapp.model.ProductsModel;
 import java.util.List;
+import java.util.Optional;
+
 import com.thaimei.myapp.model.StoreModel;
 import com.thaimei.myapp.enums.Category;
 import com.thaimei.myapp.enums.Color;
@@ -35,4 +37,10 @@ public interface ProductsRepo extends JpaRepository<ProductsModel, Long>, JpaSpe
     // this returns an int representing how many rows the database actually modified.
     @Query("UPDATE ProductsModel p SET p.quantity = p.quantity - :qty " + "WHERE p.productId = :id AND p.quantity >= :qty")
     int decreaseStock(@Param ("id") long id, @Param("qty") int qty);
+
+    Optional<ProductsModel> findByProductIdAndStoreModel_User_Id(Long productId, Long userId);
+
+    @Modifying 
+    @Query("UPDATE ProductsModel p SET p.quantity = p.quantity + :qty WHERE p.productId = :id")
+    int addStock(@Param("id") Long id, @Param("qty") int qty);
 }

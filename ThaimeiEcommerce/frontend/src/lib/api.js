@@ -333,6 +333,10 @@ export const api = {
     request(`/Cart/${encodeURIComponent(itemId)}`, {
       method: "DELETE"
     }),
+  updateCartItemQuantity: (itemId, action) =>
+    request(`/Cart/${encodeURIComponent(itemId)}?${new URLSearchParams({ action })}`, {
+      method: "PATCH"
+    }),
   orders: () => request(`${ORDER_API_BASE}/GetOrder`),
   requestReturn: (itemIds) =>
     request(`${ORDER_API_BASE}/returnProducts?${listQueryParam("itemIds", itemIds.map(Number))}`, {
@@ -431,6 +435,11 @@ export const api = {
         price: Number(product.price),
         quantity: Number(product.quantity)
       })
+    }),
+  restockSellerProduct: (productId, quantity) =>
+    request(`/sellers/products/${Number(productId)}/stock`, {
+      method: "PATCH",
+      body: JSON.stringify({ quantity: Number(quantity) })
     }),
   deleteSellerProducts: (storeId, productIds) =>
     request(`/sellers/Stores/${storeId}/productId`, {

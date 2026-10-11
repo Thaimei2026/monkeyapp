@@ -1,6 +1,7 @@
 package com.thaimei.myapp.service;
 import com.thaimei.myapp.dto.ProductDto;
 import com.thaimei.myapp.dto.sellersDto.AddProductDto;
+import com.thaimei.myapp.dto.sellersDto.RestockDto;
 import com.thaimei.myapp.enums.Color;
 import com.thaimei.myapp.enums.ProductStatus;
 import com.thaimei.myapp.enums.Size;
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 import com.thaimei.myapp.model.User;
 import com.thaimei.myapp.model.StoreModel;
 import com.thaimei.myapp.repository.StoreRepo;
+
+import jakarta.transaction.Transactional;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Slice;
@@ -152,6 +155,13 @@ public class ProductService {
         return results.map(r -> modelMapper.map(r, ProductDto.class));
 
         
+    }
+
+    @Transactional 
+    public void restockProduct(Long productId, Long userId, RestockDto restockDto) {
+        productsRepo.findByProductIdAndStoreModel_User_Id(productId, userId)
+        .orElseThrow(() -> new ResourceNotFoundException("product not found for the given user"));
+        productsRepo.addStock(productId, restockDto.getQuantity());
     }
 
 }

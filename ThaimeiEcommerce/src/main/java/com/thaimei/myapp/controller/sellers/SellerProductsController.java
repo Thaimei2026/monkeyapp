@@ -15,7 +15,9 @@ import com.thaimei.myapp.dto.sellersDto.AddProductDto;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import com.thaimei.myapp.dto.sellersDto.RestockDto;
 
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,12 @@ public class SellerProductsController {
         Pageable pageable = PageRequest.of(page, size);
         Slice <ProductDto> products = productService.getProductsForSeller(user, pageable);
         return ResponseEntity.ok(products);
+    }
+
+    @PatchMapping("/products/{productId}/stock")
+    public ResponseEntity<Map<String, String>> restockProducts(@Valid @RequestBody RestockDto reStockDto, @PathVariable Long productId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        productService.restockProduct(productId, userDetails.getId(), reStockDto);
+        return ResponseEntity.ok(Map.of("message", "Product restocked successfully"));
     }
 
     // rest naming convention uses the resources not the verb (not action)

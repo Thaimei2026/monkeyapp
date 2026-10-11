@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { CreditCard, RefreshCw, Trash2 } from "lucide-react";
+import { CreditCard, Minus, Plus, RefreshCw, Trash2 } from "lucide-react";
 import PaymentCheckout from "../components/PaymentCheckout";
 import { api, paymentIntentIdFromClientSecret } from "../lib/api";
 import { EmptyState, ErrorBanner, LoadingBlock } from "../components/StateBlocks";
+
+const quantityActions = {
+  INCREASE: "INCREASE",
+  DECREASE: "DECREASE"
+};
 
 export default function CartPage() {
   const [cart, setCart] = useState(null);
@@ -10,6 +15,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [removingItemId, setRemovingItemId] = useState(null);
+  const [quantityBusyItemId, setQuantityBusyItemId] = useState(null);
   const [checkoutSession, setCheckoutSession] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -113,6 +119,46 @@ export default function CartPage() {
     }
   }
 
+  async function changeCartItemQuantity(item, action) {
+    if (!item?.itemId) return;
+
+    setError("");
+    setNotice("");
+    setQuantityBusyItemId(item.itemId);
+
+    try {
+      await api.updateCartItemQuantity(item.itemId, action);
+      setCart((currentCart) => {
+        const nextItems = (currentCart?.items ?? []).reduce((updatedItems, currentItem) => {
+          if (currentItem.itemId !== item.itemId) {
+            updatedItems.push(currentItem);
+            return updatedItems;
+          }
+
+          const change = action === quantityActions.INCREASE ? 1 : -1;
+          const nextQuantity = Number(currentItem.quantity || 0) + change;
+
+          if (nextQuantity > 0) {
+            updatedItems.push({
+              ...currentItem,
+              quantity: nextQuantity,
+              totalPrice: Number(currentItem.price || 0) * nextQuantity
+            });
+          }
+
+          return updatedItems;
+        }, []);
+
+        return { ...currentCart, items: nextItems };
+      });
+      setNotice(action === quantityActions.INCREASE ? "Quantity increased." : "Quantity decreased.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cart quantity could not be updated");
+    } finally {
+      setQuantityBusyItemId(null);
+    }
+  }
+
   async function handlePaymentComplete({ payment, hasFailedOrders }) {
     setNotice(
       hasFailedOrders
@@ -153,16 +199,37 @@ export default function CartPage() {
                   {item.imageURL && <img className="item-thumb" src={item.imageURL} alt={item.productName} />}
                   <div>
                     <h2>{item.productName}</h2>
-                    <p>Qty {item.quantity} x Rs. {Number(item.price).toFixed(2)}</p>
+                    <p>Rs. {Number(item.price).toFixed(2)} each</p>
                   </div>
                 </div>
                 <div className="item-actions">
                   <strong>Rs. {Number(item.totalPrice).toFixed(2)}</strong>
+                  <div className="quantity-control cart-quantity-control" aria-label={`Quantity for ${item.productName}`}>
+                    <button
+                      type="button"
+                      onClick={() => changeCartItemQuantity(item, quantityActions.DECREASE)}
+                      disabled={!item.itemId || quantityBusyItemId === item.itemId || removingItemId === item.itemId}
+                      title="Decrease quantity"
+                      aria-label={`Decrease ${item.productName} quantity`}
+                    >
+                      <Minus size={17} />
+                    </button>
+                    <span>{item.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => changeCartItemQuantity(item, quantityActions.INCREASE)}
+                      disabled={!item.itemId || quantityBusyItemId === item.itemId || removingItemId === item.itemId}
+                      title="Increase quantity"
+                      aria-label={`Increase ${item.productName} quantity`}
+                    >
+                      <Plus size={17} />
+                    </button>
+                  </div>
                   <button
                     className="button secondary danger remove-cart-button"
                     type="button"
                     onClick={() => removeCartItem(item.itemId)}
-                    disabled={!item.itemId || removingItemId === item.itemId}
+                    disabled={!item.itemId || removingItemId === item.itemId || quantityBusyItemId === item.itemId}
                     aria-label={`Remove ${item.productName} from cart`}
                     title="Remove from cart"
                   >

@@ -28,6 +28,11 @@ const initialProductForm = {
   size: "M"
 };
 
+const initialRestockForm = {
+  productId: "",
+  quantity: 1
+};
+
 function label(value = "") {
   return String(value || "").replaceAll("_", " ");
 }
@@ -77,6 +82,7 @@ export default function SellerDashboardPage() {
   const [orders, setOrders] = useState([]);
   const [storeForm, setStoreForm] = useState(initialStoreForm);
   const [productForm, setProductForm] = useState(initialProductForm);
+  const [restockForm, setRestockForm] = useState(initialRestockForm);
   const [manageStoreId, setManageStoreId] = useState("");
   const [orderStoreId, setOrderStoreId] = useState("");
   const [orderPage, setOrderPage] = useState(0);
@@ -87,6 +93,7 @@ export default function SellerDashboardPage() {
   const [busyStore, setBusyStore] = useState(false);
   const [busyProduct, setBusyProduct] = useState(false);
   const [busyDelete, setBusyDelete] = useState(false);
+  const [restockingProductId, setRestockingProductId] = useState(null);
   const [busyStoreStatusId, setBusyStoreStatusId] = useState(null);
   const [savingOrderId, setSavingOrderId] = useState(null);
   const [error, setError] = useState("");
@@ -114,6 +121,16 @@ export default function SellerDashboardPage() {
     return products.filter((product) => String(productStoreId(product)) === String(manageStoreId));
   }, [manageStoreId, products]);
 
+  const restockProducts = useMemo(
+    () => products.filter((product) => productId(product) !== null && productId(product) !== undefined),
+    [products]
+  );
+
+  const selectedRestockProduct = useMemo(
+    () => restockProducts.find((product) => String(productId(product)) === String(restockForm.productId)),
+    [restockForm.productId, restockProducts]
+  );
+
   useEffect(() => {
     const firstStoreId = stores[0]?.storeId ? String(stores[0].storeId) : "";
 
@@ -127,6 +144,17 @@ export default function SellerDashboardPage() {
     setProductForm((current) => (current.storeId ? current : { ...current, storeId: firstStoreId }));
     setManageStoreId((current) => current || firstStoreId);
   }, [stores]);
+
+  useEffect(() => {
+    setRestockForm((current) => {
+      if (!restockProducts.length) {
+        return { ...current, productId: "" };
+      }
+
+      const selectedExists = restockProducts.some((product) => String(productId(product)) === String(current.productId));
+      return selectedExists ? current : { ...current, productId: String(productId(restockProducts[0])) };
+    });
+  }, [restockProducts]);
 
   async function loadSellerData() {
     setError("");
@@ -176,6 +204,10 @@ export default function SellerDashboardPage() {
 
   function updateProductForm(key, value) {
     setProductForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateRestockForm(key, value) {
+    setRestockForm((current) => ({ ...current, [key]: value }));
   }
 
   async function createStore(event) {
@@ -253,6 +285,53 @@ export default function SellerDashboardPage() {
     setOrders((current) =>
       current.map((order) => (orderId(order) === id ? { ...order, pendingStatus: status } : order))
     );
+  }
+
+  async function restockProduct(product, quantityValue) {
+    const id = productId(product);
+    const quantity = Number(quantityValue ?? 1);
+
+    if (!id) {
+      setError("Product id is missing from this row.");
+      return;
+    }
+
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setError("Enter a whole restock quantity of at least 1.");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setRestockingProductId(id);
+
+    try {
+      await api.restockSellerProduct(id, quantity);
+      setProducts((current) =>
+        current.map((item) =>
+          productId(item) === id ? { ...item, quantity: Number(item.quantity || 0) + quantity } : item
+        )
+      );
+      setRestockForm((current) =>
+        String(current.productId) === String(id) ? { ...current, quantity: 1 } : current
+      );
+      setNotice(`Restocked ${product.name || `product #${id}`} by ${quantity} unit${quantity === 1 ? "" : "s"}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Product could not be restocked");
+    } finally {
+      setRestockingProductId(null);
+    }
+  }
+
+  async function restockSelectedProduct(event) {
+    event.preventDefault();
+
+    if (!selectedRestockProduct) {
+      setError("Select a product to restock.");
+      return;
+    }
+
+    await restockProduct(selectedRestockProduct, restockForm.quantity);
   }
 
   async function saveOrderStatus(order) {
@@ -483,6 +562,49 @@ export default function SellerDashboardPage() {
               <button className="button span-two" type="submit" disabled={busyProduct || !selectedStore}>
                 <PackagePlus size={18} />
                 {busyProduct ? "Saving..." : "Save product"}
+              </button>
+            </form>
+
+            <form className="profile-form seller-form restock-form span-two" onSubmit={restockSelectedProduct}>
+              <div className="form-heading span-two">
+                <PackagePlus size={22} />
+                <h2>Restock Product</h2>
+              </div>
+              <label className="restock-product-field">
+                Product
+                <select
+                  value={restockForm.productId}
+                  onChange={(event) => updateRestockForm("productId", event.target.value)}
+                  disabled={!restockProducts.length || restockingProductId !== null}
+                  required
+                >
+                  {!restockProducts.length && <option value="">No products</option>}
+                  {restockProducts.map((product) => {
+                    const id = productId(product);
+
+                    return (
+                      <option key={id} value={id}>
+                        {product.name || `Product #${id}`} #{id} - {label(product.category)} / {label(product.color)} / {product.size} ({product.quantity} in stock)
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <label>
+                Quantity
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={restockForm.quantity}
+                  onChange={(event) => updateRestockForm("quantity", event.target.value)}
+                  disabled={!restockProducts.length || restockingProductId !== null}
+                  required
+                />
+              </label>
+              <button className="button" type="submit" disabled={!selectedRestockProduct || restockingProductId !== null}>
+                <PackagePlus size={18} />
+                {restockingProductId ? "Restocking..." : "Restock"}
               </button>
             </form>
           </section>
