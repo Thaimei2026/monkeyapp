@@ -50,10 +50,8 @@ public class SellerOrdersController {
 
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<?> updateOrderStatus(@Valid @RequestBody UpdateOrderStatus statusDto, @AuthenticationPrincipal CustomUserDetails userDetails, @PathVariable Long orderId) {
-        orderService.updateStoreStatus(statusDto, userDetails.getId(), orderId);
+        orderService.updateOrderStatus(statusDto, userDetails.getId(), orderId);
         return ResponseEntity.ok(Map.of("message","status updated successfully!"));
     }
-
     // order status (pending, placed)
-    
 }

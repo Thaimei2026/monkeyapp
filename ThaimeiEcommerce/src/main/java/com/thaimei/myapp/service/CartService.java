@@ -147,7 +147,7 @@ public class CartService {
 
     @Transactional 
     public void changeQuantity(Long itemId, Long userId, int change) {
-        CartItem item = cartItemRepository.findByIdAndCart_User_Id(itemId, userId)
+        CartItem item = cartItemRepository.findByItemIdAndCart_User_Id(itemId, userId)
         .orElseThrow(() -> new ResourceNotFoundException("Item not found!"));
 
         int newQuantity = item.getQuantity() + change;

@@ -29,6 +29,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
+import org.springframework.scheduling.annotation.Scheduled;
+
 import com.thaimei.myapp.model.OrderItems;
 import com.thaimei.myapp.model.StoreModel;
 import com.thaimei.myapp.repository.StoreRepo;
@@ -60,7 +62,7 @@ public class OrderService {
         this.orderItemRepo = orderItemRepo;
     }
 
-
+    @Transactional
     public String checkout(OrderPlaceDto orderDto, User user) {
         //get a list of products since one order can have multiple products.
         List<Long> productId = orderDto.getOrderItems().stream()
@@ -91,6 +93,18 @@ public class OrderService {
         if(!problems.isEmpty()) {
                 throw new AppException("Some items are unavailable: " + String.join(", ", problems), 400);
             }
+        // deduction and reserve stock for each item in the order, if any item fails to reserve stock, roll back the previous reserved items.   
+        List<ItemRequestDto> reserved = new ArrayList<>();
+        for(ItemRequestDto item: orderDto.getOrderItems()) {
+            int updated = productsRepo.decreaseStock(item.getProductId(), item.getQuantity());
+            if(updated == 0) {
+                for(ItemRequestDto done: reserved) {
+                    productsRepo.addStock(done.getProductId(), done.getQuantity());
+                }
+                throw new AppException(productsMap.get(item.getProductId()).getName() + " just sold out!", 400);
+            }
+            reserved.add(item);
+        }
 
         //collector.groupingBy() --> a classifier method, it internal build a list and accumulate elements into the list (products in our case) base on the key (StoreModel), which we get from productsModel, since storeModel lives in ProductsModel (manyToOne relationship). 
         //why do this? since it's the business requirement, one order per Store, without grouping first we won't know which items belong to which store
@@ -187,7 +201,12 @@ public class OrderService {
         //create(), a static method of the PaymentIntent class, it takes the params we built and sends a request to Stripe's API to create a new PaymentIntent with those parameters.
         PaymentIntent intent  = PaymentIntent.create(params);
         return intent.getClientSecret();
+
         } catch (StripeException e) {
+            // add back the stock for all the items in the order, since the payment creation failed, we don't want to keep the stock reserved.
+            for (ItemRequestDto item: orderDto.getOrderItems()) {
+                productsRepo.addStock(item.getProductId(), item.getQuantity());
+            }
             System.out.println("payment creation failed" + e.getMessage());
             //if payment creation fails, don't roll back the whole order but keep them as failed, so that the user can try again later, and we can keep track of the failed orders for analysis.
             ordersToSave.forEach(o-> o.setStatus(OrderStatusEnum.FAILED));
@@ -258,7 +277,7 @@ public class OrderService {
         .map(order-> modelMapper.map(order, AdminOrderDto.class));
     }
 
-    public void updateStoreStatus (UpdateOrderStatus status, Long userId, Long Id) {
+    public void updateOrderStatus (UpdateOrderStatus status, Long userId, Long Id) {
         Orders order = orderRepo.findById(Id)
         .orElseThrow(()-> new ResourceNotFoundException("Order not found"));
 
@@ -299,4 +318,19 @@ public class OrderService {
         }
        
     }
+
+    @Scheduled(fixedRate = 300000)
+    @Transactional
+    public void cancelAbandonedOrders() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(15);
+        List<Orders> stale = orderRepo.findByStatusAndCreationTimeBefore(OrderStatusEnum.PENDING, cutoff);
+
+        for (Orders order: stale) {
+            for(OrderItems oi: order.getOrderItems()) {
+                productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
+            }
+            order.setStatus(OrderStatusEnum.CANCELLED);
+        }
+    } 
+
 }

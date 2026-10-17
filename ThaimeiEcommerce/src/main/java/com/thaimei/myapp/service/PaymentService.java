@@ -12,7 +12,6 @@ import org.modelmapper.ModelMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import com.stripe.model.Charge;
@@ -111,7 +110,7 @@ public class PaymentService {
 
             //set the order status after the payment status is set, successful payment means successful orders.
             OrderStatusEnum newOrderStatus = switch(payment.getPaymentStatus()) {
-                case SUCCESSFUL -> OrderStatusEnum.DELIVERED;
+                case SUCCESSFUL -> OrderStatusEnum.PLACED;
                 case FAILED -> OrderStatusEnum.FAILED;
                 default -> OrderStatusEnum.PENDING;
             };
@@ -122,25 +121,17 @@ public class PaymentService {
                     System.out.println("order not found for id:" + orderId);
                     throw new WebhookProcessingException("orderId doesn't exist");
                 } 
-                // we're doing so that when one order runs out of stock it shouldn't flip other unrelated orders in the same payment to FAILED.
-                OrderStatusEnum finalStatus = newOrderStatus;
-
-                boolean firstSuccess = newOrderStatus == OrderStatusEnum.DELIVERED && order.getStatus() != OrderStatusEnum.DELIVERED;
-
-                if(firstSuccess) {
-                    for(OrderItems oi: order.getOrderItems()) {
-                        int updatedStock = productsRepo.decreaseStock(oi.getProduct().getProductId(), oi.getQuantity());
-                        if(updatedStock == 0) {
-                            finalStatus = OrderStatusEnum.FAILED;
-                            break;
+                order.setPayment(payment);
+                if(order.getStatus() == OrderStatusEnum.PENDING) {
+                    if(newOrderStatus == OrderStatusEnum.PLACED) {
+                        order.setStatus(OrderStatusEnum.PLACED);
+                    } else if(newOrderStatus == OrderStatusEnum.FAILED) {
+                        for(OrderItems oi: order.getOrderItems()) {
+                            productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
                         }
-                        
+                        order.setStatus(OrderStatusEnum.FAILED);
                     }
                 }
-                
-                order.setPayment(payment);
-                order.setStatus(finalStatus);
-                order.setDeliveredAt(LocalDateTime.now());
                 orderRepo.save(order);
             }
             return true;

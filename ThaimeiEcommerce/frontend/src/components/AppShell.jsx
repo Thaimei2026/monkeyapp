@@ -55,7 +55,7 @@ export default function AppShell({ session, onLogout }) {
               </NavLink>
               <NavLink to="/orders">
                 <Package size={18} />
-                Orders
+                Order history
               </NavLink>
               <NavLink to="/payments">
                 <CreditCard size={18} />
