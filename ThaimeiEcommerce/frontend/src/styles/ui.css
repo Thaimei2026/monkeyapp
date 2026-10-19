@@ -21,13 +21,29 @@ body { background: var(--canvas); color: var(--ink); }
 .account-chip { display: flex; align-items: center; gap: 8px; max-width: 150px; padding: 5px 9px 5px 5px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 12px; overflow: hidden; }
 .account-chip span { display: grid; flex: 0 0 auto; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: var(--brand-pale); color: var(--brand-dark); font-weight: 900; }
 .account-chip strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.signout-button { width: 38px; height: 38px; min-height: 38px; }
+.signout-button { width: var(--control-height); height: var(--control-height); min-height: var(--control-height); }
 
-.button, .icon-button { border-radius: 999px; background: var(--brand); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.button, .icon-button { border-radius: var(--control-radius); background: var(--brand); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
 .button:hover:not(:disabled), .icon-button:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 8px 18px rgba(39, 106, 83, .2); }
 .button.secondary { border-color: var(--line); background: var(--surface); color: var(--ink); }
 .button.secondary:hover:not(:disabled), .icon-button:not(.dark):hover:not(:disabled) { background: var(--surface-soft); color: var(--ink); }
-.icon-button.dark { background: var(--ink); }
+.button.danger { background: var(--danger); }
+.button.danger:hover:not(:disabled) { background: var(--danger-dark); box-shadow: 0 8px 18px rgba(184, 63, 54, .18); }
+.button.danger-subtle { border: 1px solid color-mix(in srgb, var(--danger), white 68%); background: var(--surface); color: var(--danger); }
+.button.danger-subtle:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in srgb, var(--danger), white 94%); color: var(--danger-dark); }
+.icon-button.dark { background: var(--brand); }
+.icon-button.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger), white 68%); }
+.icon-button.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger), white 94%); color: var(--danger-dark); }
+.button:disabled, .button.secondary:disabled, .button.danger:disabled, .button.danger-subtle:disabled,
+.icon-button:disabled, .icon-button.dark:disabled, .icon-button.danger:disabled {
+  transform: none;
+  box-shadow: none;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  opacity: 1;
+}
+.button:focus-visible, .icon-button:focus-visible, a.button:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand), white 48%); outline-offset: 2px; }
 .pill { background: var(--brand-pale); color: var(--brand-dark); letter-spacing: .06em; }
 .eyebrow, .section-kicker { display: inline-flex; align-items: center; gap: 7px; color: var(--brand); font-size: 12px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
 
@@ -38,8 +54,8 @@ body { background: var(--canvas); color: var(--ink); }
 .hero h1 em { color: #9fe0c4; font-family: Georgia, serif; font-weight: 400; }
 .hero-copy { z-index: 1; }
 .hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; }
-.hero-button { background: #fff; color: var(--ink); }
-.hero-button:hover:not(:disabled) { background: #e1f2e9; color: var(--ink); }
+.hero-button { background: var(--brand); color: #fff; }
+.hero-button:hover:not(:disabled) { background: var(--brand-dark); color: #fff; }
 .text-button { color: white; font-weight: 800; text-decoration: underline; text-underline-offset: 5px; }
 .hero-orb { position: absolute; width: 280px; aspect-ratio: 1; right: 9%; top: 14%; border: 1px solid rgba(255,255,255,.42); border-radius: 50%; }
 .hero-orb::after { content: ""; position: absolute; inset: 24px; border-radius: inherit; background: rgba(159, 224, 196, .18); }
@@ -71,7 +87,8 @@ body { background: var(--canvas); color: var(--ink); }
 .product-card img { transition: transform .35s ease; }
 .product-card:hover img { transform: scale(1.035); }
 .product-info { padding: 18px; }
-.detail-image { border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.detail-image-frame { border-radius: 0; box-shadow: none; }
+.detail-image { border-radius: 0; box-shadow: none; }
 .summary-panel { border-top: 4px solid var(--brand); box-shadow: var(--shadow-sm); }
 .line-item { border-color: var(--line); border-radius: var(--radius-sm); transition: box-shadow .2s ease; }
 .line-item:hover { box-shadow: var(--shadow-sm); }

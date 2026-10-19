@@ -7,5 +7,8 @@ public enum OrderStatusEnum {
     DELIVERED,
     CANCELLED,
     FAILED,
-    RETURNED
+    RETURNED,
+    REJECTED,
+    PACKED,
+    OUT_FOR_DELIVERY
 }

@@ -110,7 +110,9 @@ export default function ProductDetailPage({ session }) {
       {loading && <LoadingBlock label="Loading product" />}
       {product && (
         <section className="detail-layout">
-          <img className="detail-image" src={productImage(product)} alt={product.name} />
+          <div className="detail-image-frame">
+            <img className="detail-image" src={productImage(product)} alt={product.name} />
+          </div>
           <div className="detail-copy">
             <span className="pill">{product.quantity > 0 ? `${product.quantity} in stock` : "Out of stock"}</span>
             <h1>{product.name}</h1>

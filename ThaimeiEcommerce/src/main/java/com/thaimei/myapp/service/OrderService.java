@@ -10,9 +10,11 @@ import org.modelmapper.ModelMapper;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.thaimei.myapp.dto.adminDto.AdminOrderDto;
+import com.thaimei.myapp.dto.sellersDto.SellerOrderItemResponse;
 import com.thaimei.myapp.dto.sellersDto.SellerOrdersResponse;
 import com.thaimei.myapp.dto.sellersDto.UpdateOrderStatus;
 import com.thaimei.myapp.model.ProductsModel;
@@ -250,7 +252,14 @@ public class OrderService {
         //it tells where one property ends and one starts.
         Slice<Orders> orders = orderRepo.findByStore_User(user, pageable);
         return orders 
-        .map(order -> modelMapper.map(order, SellerOrdersResponse.class));
+        .map(order -> { 
+            SellerOrdersResponse dto = modelMapper.map(order, SellerOrdersResponse.class);
+             dto.setItems(order.getOrderItems().stream()
+            .map(oi -> new SellerOrderItemResponse(oi.getProductNameAtPurchase(), oi.getQuantity()))
+            .toList());
+            return dto;
+        });
+
     }
     
     public Slice<SellerOrdersResponse> getOrderByStore (Long sellerId, Pageable pageable, long storeId) {
@@ -277,21 +286,36 @@ public class OrderService {
         .map(order-> modelMapper.map(order, AdminOrderDto.class));
     }
 
-    public void updateOrderStatus (UpdateOrderStatus status, Long userId, Long Id) {
-        Orders order = orderRepo.findById(Id)
+    // Sellers will be allowed to set only certain status, for example, they can set the order to confirmed or rejected but not shipped or delivered.
+    private static final Map<OrderStatusEnum, Set<OrderStatusEnum>> ALLOWED_SELLER = Map.of(OrderStatusEnum.PLACED, Set.of(OrderStatusEnum.CONFIRMED, OrderStatusEnum.REJECTED),
+    OrderStatusEnum.CONFIRMED, Set.of(OrderStatusEnum.PACKED));
+
+    @Transactional 
+    public void updateOrderStatus (UpdateOrderStatus statusDto, Long sellerId, Long orderId) {
+        Orders order = orderRepo.findById(orderId)
         .orElseThrow(()-> new ResourceNotFoundException("Order not found"));
 
-        if(!order.getUser().getId().equals(userId)) {
+        if(!order.getStore().getUser().getId().equals(sellerId)) {
             throw new AppException("you don't own this order", 403);
         }
 
-        //block the status update if both of these conditions evaluates to true.
-        if(order.getStatus() != OrderStatusEnum.CONFIRMED && status.getStatus() == OrderStatusEnum.SHIPPED) {
-            throw new AppException("Order must be confirmed before shipping",400 );
-        }
+        OrderStatusEnum current = order.getStatus();
+        OrderStatusEnum next = statusDto.getStatus();
 
-        order.setStatus(status.getStatus());
-        orderRepo.save(order);
+        // getOrDefault(key, fallback) is a Map method: look up the key, and if it’s not in the map, return the fallback instead of null
+        // contains(x) is a Set method that answers one question: “is x inside this set?” It returns true or false.
+        if(! ALLOWED_SELLER.getOrDefault(current, Set.of()).contains(next)) {
+            throw new AppException(" cannot change status from " + current + " to " + next, 400);
+        }
+        order.setStatus(next);
+        
+        // if the order is rejected for some reason adds back the deducted stock to the marketplace
+        if(next == OrderStatusEnum.REJECTED) {
+            for(OrderItems oi: order.getOrderItems()) {
+                productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
+            }
+        }
+        // the payment also needs to be refunded.
     }
 
     @Transactional

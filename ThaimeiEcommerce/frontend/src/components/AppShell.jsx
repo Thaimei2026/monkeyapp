@@ -74,7 +74,7 @@ export default function AppShell({ session, onLogout }) {
             </NavLink>
           )}
           {isSeller && (
-            <NavLink to="/seller">
+            <NavLink to="/seller" end>
               <Store size={18} />
               Seller
             </NavLink>

@@ -226,7 +226,7 @@ export default function CartPage() {
                     </button>
                   </div>
                   <button
-                    className="button secondary danger remove-cart-button"
+                    className="button compact danger-subtle remove-cart-button"
                     type="button"
                     onClick={() => removeCartItem(item.itemId)}
                     disabled={!item.itemId || removingItemId === item.itemId || quantityBusyItemId === item.itemId}

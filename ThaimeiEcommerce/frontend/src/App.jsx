@@ -14,7 +14,7 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import ProductsPage from "./pages/ProductsPage";
 import ProfilePage from "./pages/ProfilePage";
 import ReturnsPage from "./pages/ReturnsPage";
-import SellerDashboardPage from "./pages/SellerDashboardPage";
+import SellerAreaPage from "./pages/SellerAreaPage";
 
 export default function App() {
   const [session, setSession] = useState(() => loadSession());
@@ -74,9 +74,13 @@ export default function App() {
           path="/seller"
           element={
             <ProtectedRoute session={session} sellerOnly>
-              <SellerDashboardPage />
+              <SellerAreaPage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/seller/orders"
+          element={<Navigate to="/seller?view=orders" replace />}
         />
         <Route
           path="/admin"

@@ -11,6 +11,11 @@
   --brand-pale: #e2f0e8;
   --accent: #f6b74e;
   --danger: #b83f36;
+  --danger-dark: #96332d;
+  --control-height: 42px;
+  --control-radius: 12px;
+  --control-padding-x: 16px;
+  --control-padding-x-compact: 12px;
   --shadow-sm: 0 10px 28px rgba(28, 46, 39, 0.08);
   --shadow-lg: 0 24px 60px rgba(28, 46, 39, 0.17);
   --radius-sm: 12px;
