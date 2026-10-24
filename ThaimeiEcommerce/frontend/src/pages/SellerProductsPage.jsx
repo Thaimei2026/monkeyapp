@@ -7,6 +7,7 @@ import SellerSectionNav from "../components/SellerSectionNav";
 const categories = ["T_SHIRTS", "HOODIES", "PANTS", "SHOES", "JACKETS"];
 const colors = ["RED", "BLUE", "GREY", "YELLOW", "BLACK", "WHITE"];
 const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const maxProductsPerRequest = 100;
 const initialProductForm = {
   storeId: "",
   name: "",
@@ -46,7 +47,7 @@ function storeName(store) {
 export default function SellerProductsPage() {
   const [stores, setStores] = useState([]);
   const [products, setProducts] = useState([]);
-  const [productForm, setProductForm] = useState(initialProductForm);
+  const [productForms, setProductForms] = useState([{ ...initialProductForm }]);
   const [restockForm, setRestockForm] = useState({ productId: "", quantity: 1 });
   const [manageStoreId, setManageStoreId] = useState("");
   const [selectedProductIds, setSelectedProductIds] = useState([]);
@@ -60,11 +61,6 @@ export default function SellerProductsPage() {
   useEffect(() => {
     loadSellerProducts();
   }, []);
-
-  const selectedStore = useMemo(
-    () => stores.find((store) => String(storeId(store)) === String(productForm.storeId)),
-    [productForm.storeId, stores]
-  );
 
   const visibleProducts = useMemo(() => {
     if (!manageStoreId) return products;
@@ -87,13 +83,13 @@ export default function SellerProductsPage() {
     const firstStoreId = stores[0] ? String(storeId(stores[0])) : "";
 
     if (!stores.length) {
-      setProductForm((current) => ({ ...current, storeId: "" }));
+      setProductForms((current) => current.map((form) => ({ ...form, storeId: "" })));
       setManageStoreId("");
       setSelectedProductIds([]);
       return;
     }
 
-    setProductForm((current) => (current.storeId ? current : { ...current, storeId: firstStoreId }));
+    setProductForms((current) => current.map((form) => (form.storeId ? form : { ...form, storeId: firstStoreId })));
     setManageStoreId((current) => current || firstStoreId);
   }, [stores]);
 
@@ -119,24 +115,37 @@ export default function SellerProductsPage() {
     }
   }
 
-  function updateProductForm(key, value) {
-    setProductForm((current) => ({ ...current, [key]: value }));
+  function updateProductForm(index, key, value) {
+    setProductForms((current) => current.map((form, formIndex) =>
+      formIndex === index ? { ...form, [key]: value } : form
+    ));
+  }
+
+  function addProductForm() {
+    if (productForms.length >= maxProductsPerRequest) return;
+    const preferredStoreId = productForms[productForms.length - 1]?.storeId || (stores[0] ? String(storeId(stores[0])) : "");
+    setProductForms((current) => [...current, { ...initialProductForm, storeId: preferredStoreId }]);
+  }
+
+  function removeProductForm(index) {
+    setProductForms((current) => current.length > 1 ? current.filter((_, formIndex) => formIndex !== index) : current);
   }
 
   function updateRestockForm(key, value) {
     setRestockForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function addProduct(event) {
+  async function addProducts(event) {
     event.preventDefault();
     setError("");
     setNotice("");
     setBusyProduct(true);
 
     try {
-      await api.addSellerProduct(productForm);
-      setProductForm((current) => ({ ...initialProductForm, storeId: current.storeId }));
-      setNotice("Product saved.");
+      await api.addSellerProducts(productForms);
+      const preferredStoreId = productForms[0]?.storeId || (stores[0] ? String(storeId(stores[0])) : "");
+      setProductForms([{ ...initialProductForm, storeId: preferredStoreId }]);
+      setNotice(`${productForms.length} product${productForms.length === 1 ? "" : "s"} saved.`);
       await loadSellerProducts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Product could not be saved");
@@ -249,86 +258,121 @@ export default function SellerProductsPage() {
               <div className="form-heading seller-form-heading">
                 <PackagePlus size={22} />
                 <div>
-                  <h2>Add a product</h2>
-                  <p>Choose a store and enter the product details.</p>
+                  <h2>Add products</h2>
+                  <p>Add up to {maxProductsPerRequest} products in one save.</p>
                 </div>
               </div>
-              <span className="seller-disclosure-cta">Add product</span>
+              <span className="seller-disclosure-cta">Add products</span>
             </summary>
-            <form className="profile-form seller-form seller-product-form" onSubmit={addProduct}>
-              <label className="span-all">
-                Store
-                <select
-                  value={productForm.storeId}
-                  onChange={(event) => updateProductForm("storeId", event.target.value)}
-                  disabled={!stores.length}
-                  required
+            <form className="profile-form seller-form seller-product-form" onSubmit={addProducts}>
+              <div className="seller-product-batch span-all">
+                {productForms.map((productForm, index) => (
+                  <section className="seller-product-entry" key={index} aria-labelledby={`seller-product-title-${index}`}>
+                    <div className="seller-product-entry-heading">
+                      <h3 id={`seller-product-title-${index}`}>Product {index + 1}</h3>
+                      {productForms.length > 1 && (
+                        <button
+                          className="button secondary compact"
+                          type="button"
+                          onClick={() => removeProductForm(index)}
+                          disabled={busyProduct}
+                          aria-label={`Remove product ${index + 1}`}
+                        >
+                          <Trash2 size={16} />
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <label className="span-all">
+                      Store
+                      <select
+                        value={productForm.storeId}
+                        onChange={(event) => updateProductForm(index, "storeId", event.target.value)}
+                        disabled={!stores.length || busyProduct}
+                        required
+                      >
+                        {!stores.length && <option value="">No stores</option>}
+                        {stores.map((store) => (
+                          <option key={storeId(store)} value={storeId(store)}>{storeName(store)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Product name
+                      <input value={productForm.name} onChange={(event) => updateProductForm(index, "name", event.target.value)} disabled={busyProduct} required />
+                    </label>
+                    <label>
+                      Price
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={productForm.price}
+                        onChange={(event) => updateProductForm(index, "price", event.target.value)}
+                        disabled={busyProduct}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Starting quantity
+                      <input
+                        type="number"
+                        min="1"
+                        value={productForm.quantity}
+                        onChange={(event) => updateProductForm(index, "quantity", event.target.value)}
+                        disabled={busyProduct}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Image URL
+                      <input value={productForm.imageURL} onChange={(event) => updateProductForm(index, "imageURL", event.target.value)} disabled={busyProduct} required />
+                    </label>
+                    <label>
+                      Category
+                      <select value={productForm.category} onChange={(event) => updateProductForm(index, "category", event.target.value)} disabled={busyProduct}>
+                        {categories.map((category) => <option key={category} value={category}>{label(category)}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Color
+                      <select value={productForm.color} onChange={(event) => updateProductForm(index, "color", event.target.value)} disabled={busyProduct}>
+                        {colors.map((color) => <option key={color} value={color}>{label(color)}</option>)}
+                      </select>
+                    </label>
+                    <label>
+                      Size
+                      <select value={productForm.size} onChange={(event) => updateProductForm(index, "size", event.target.value)} disabled={busyProduct}>
+                        {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                      </select>
+                    </label>
+                    <label className="span-all">
+                      Description
+                      <textarea
+                        value={productForm.description}
+                        onChange={(event) => updateProductForm(index, "description", event.target.value)}
+                        disabled={busyProduct}
+                        required
+                      />
+                    </label>
+                  </section>
+                ))}
+              </div>
+              <div className="seller-product-batch-actions span-all">
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={addProductForm}
+                  disabled={busyProduct || productForms.length >= maxProductsPerRequest || !stores.length}
                 >
-                  {!stores.length && <option value="">No stores</option>}
-                  {stores.map((store) => (
-                    <option key={storeId(store)} value={storeId(store)}>{storeName(store)}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Product name
-                <input value={productForm.name} onChange={(event) => updateProductForm("name", event.target.value)} required />
-              </label>
-              <label>
-                Price
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={productForm.price}
-                  onChange={(event) => updateProductForm("price", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Starting quantity
-                <input
-                  type="number"
-                  min="1"
-                  value={productForm.quantity}
-                  onChange={(event) => updateProductForm("quantity", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Image URL
-                <input value={productForm.imageURL} onChange={(event) => updateProductForm("imageURL", event.target.value)} required />
-              </label>
-              <label>
-                Category
-                <select value={productForm.category} onChange={(event) => updateProductForm("category", event.target.value)}>
-                  {categories.map((category) => <option key={category} value={category}>{label(category)}</option>)}
-                </select>
-              </label>
-              <label>
-                Color
-                <select value={productForm.color} onChange={(event) => updateProductForm("color", event.target.value)}>
-                  {colors.map((color) => <option key={color} value={color}>{label(color)}</option>)}
-                </select>
-              </label>
-              <label>
-                Size
-                <select value={productForm.size} onChange={(event) => updateProductForm("size", event.target.value)}>
-                  {sizes.map((size) => <option key={size} value={size}>{size}</option>)}
-                </select>
-              </label>
-              <label className="span-all">
-                Description
-                <textarea
-                  value={productForm.description}
-                  onChange={(event) => updateProductForm("description", event.target.value)}
-                  required
-                />
-              </label>
-              <button className="button seller-form-submit" type="submit" disabled={busyProduct || !selectedStore}>
-                <PackagePlus size={18} />
-                {busyProduct ? "Saving..." : "Save product"}
-              </button>
+                  <PackagePlus size={18} />
+                  Add another product
+                </button>
+                <button className="button seller-form-submit" type="submit" disabled={busyProduct || !stores.length}>
+                  <PackagePlus size={18} />
+                  {busyProduct ? "Saving..." : `Save ${productForms.length} product${productForms.length === 1 ? "" : "s"}`}
+                </button>
+              </div>
             </form>
           </details>
 

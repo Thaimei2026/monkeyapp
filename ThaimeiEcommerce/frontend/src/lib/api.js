@@ -426,14 +426,16 @@ export const api = {
     }),
   sellerProductsSlice: (page = 0, size = 20) => request(pagedPath("/sellers/getProducts", page, size)),
   sellerProducts: (page = 0, size = 20) => api.sellerProductsSlice(page, size).then(contentPayload),
-  addSellerProduct: (product) =>
+  addSellerProducts: (products) =>
     request("/sellers/addProducts", {
       method: "POST",
       body: JSON.stringify({
-        ...product,
-        storeId: Number(product.storeId),
-        price: Number(product.price),
-        quantity: Number(product.quantity)
+        products: products.map((product) => ({
+          ...product,
+          storeId: Number(product.storeId),
+          price: Number(product.price),
+          quantity: Number(product.quantity)
+        }))
       })
     }),
   restockSellerProduct: (productId, quantity) =>

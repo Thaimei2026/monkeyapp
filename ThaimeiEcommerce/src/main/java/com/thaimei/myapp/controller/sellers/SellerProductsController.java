@@ -11,7 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.thaimei.myapp.security.CustomUserDetails;
 import com.thaimei.myapp.model.User;
 import com.thaimei.myapp.dto.ProductDto;
-import com.thaimei.myapp.dto.sellersDto.AddProductDto;
+import com.thaimei.myapp.dto.sellersDto.ProductListDto;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,9 +34,9 @@ public class SellerProductsController {
     }
     
     @PostMapping("/addProducts")
-    public ResponseEntity<?> addProducts(@Valid @RequestBody AddProductDto addProductDto, @AuthenticationPrincipal CustomUserDetails customUserDetails ) {
+    public ResponseEntity<?> addProducts(@Valid @RequestBody ProductListDto productList, @AuthenticationPrincipal CustomUserDetails customUserDetails ) {
         User user = customUserDetails.getUser();
-        productService.saveProducts(addProductDto, user);
+        productService.saveProducts(productList.getProducts(), user);
         //since success message is just a plain string we should wrap it in Map.of() so frontend never reveives plain string but always a JSON object.
         return ResponseEntity.ok(Map.of("message","product added successfully"));
     }

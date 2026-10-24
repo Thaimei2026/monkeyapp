@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 
 public class SellerOrderItemResponse {
     private String productName;
-    private int quntity;
+    private int quantity;
 }

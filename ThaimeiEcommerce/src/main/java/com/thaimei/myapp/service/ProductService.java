@@ -64,8 +64,10 @@ public class ProductService {
         return modelMapper.map(product, ProductDto.class);
     }
     
-    public void saveProducts(AddProductDto productDto, User user) {
-        StoreModel store = storeRepo.findByStoreIdAndUser(productDto.getStoreId(), user)
+    @Transactional 
+    public void saveProducts(List<AddProductDto> dtos, User user) {
+        for(AddProductDto productDto : dtos) {
+            StoreModel store = storeRepo.findByStoreIdAndUser(productDto.getStoreId(), user)
         .orElseThrow(() -> new AppException("Store not found for the given User", 400));
         
         if(store.getStoreStatus()!= StoreStatus.ACCEPTED) {
@@ -77,7 +79,7 @@ public class ProductService {
         if (existing!=null) {
             existing.setQuantity(existing.getQuantity() + productDto.getQuantity());
             productsRepo.save(existing);
-            return;
+            continue;
         }
 
         ProductsModel product = new ProductsModel();
@@ -91,6 +93,7 @@ public class ProductService {
         product.setSize(productDto.getSize());
         product.setStoreModel(store);
         productsRepo.save(product);
+        } 
     } 
 
     public void deleteProducts (Long storeId, List<Long> productIds, Long userId) {

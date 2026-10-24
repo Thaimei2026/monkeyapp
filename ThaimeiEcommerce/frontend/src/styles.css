@@ -967,6 +967,41 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.seller-product-batch {
+  display: grid;
+  gap: 14px;
+}
+
+.seller-product-entry {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  padding: 18px;
+  border: 1px solid #e8e0d4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.seller-product-entry-heading {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.seller-product-entry-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.seller-product-batch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 .seller-restock-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(130px, 180px) auto;
@@ -1802,6 +1837,7 @@ select:disabled {
   }
 
   .seller-product-form,
+  .seller-product-entry,
   .seller-restock-toolbar,
   .seller-inventory-panel .seller-product-tools {
     grid-template-columns: 1fr;
