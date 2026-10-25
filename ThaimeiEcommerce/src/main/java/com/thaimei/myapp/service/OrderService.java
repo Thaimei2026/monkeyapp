@@ -217,13 +217,26 @@ public class OrderService {
         }
     }
 
-
+    @Transactional
     public List<OrderResponseDto> getOrdersByUserId(User user) {
-        List<Orders> orders=orderRepo.findByUser_Id(user.getId());
+        List<Orders> orders=orderRepo.findByUserIdWithItems(user.getId());
         return orders.stream()
-        .map(order->modelMapper.map(order,OrderResponseDto.class))
+        .map(this::toOrderDto)
         .toList();
     }
+
+    private OrderResponseDto toOrderDto(Orders order) {
+        OrderResponseDto dto = new OrderResponseDto();
+        dto.setId(order.getId());
+        dto.setStatus(order.getStatus());
+        dto.setTotalPrice(order.getTotalPrice());
+        dto.setCreationTime(order.getCreationTime());
+        dto.setOrderItems(order.getOrderItems().stream()
+                .map(this::toItemDto)
+                .toList());
+        return dto;
+    } //work in progress, fix it as soon as possible
+
     
     public Slice <AdminOrderDto> getAdminOrders( @NonNull Pageable pageable) {
         Page <Orders> orders=orderRepo.findAll(pageable);

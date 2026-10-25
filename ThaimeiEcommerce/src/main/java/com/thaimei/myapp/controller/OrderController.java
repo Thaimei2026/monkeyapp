@@ -23,6 +23,7 @@ import com.thaimei.myapp.security.CustomUserDetails;
 import com.thaimei.myapp.repository.UserRepository;
 import com.thaimei.myapp.model.User;
 import java.util.Map;
+import com.thaimei.myapp.dto.CancelOrderDto;
 
 
 @RestController
@@ -63,5 +64,10 @@ public class OrderController {
     public ResponseEntity<?> returnProducts(@Valid ReturnOrderDto dto, @AuthenticationPrincipal CustomUserDetails userDetails) {
         orderService.markItemsReturned(dto.getItemIds(), userDetails.getId());
         return ResponseEntity.ok(Map.of("message","choose a refund or replacement Item"));
+    }
+
+    @PatchMapping("/cancel")
+    public ResponseEntity<?> cancelOrder(@Valid @RequestBody CancelOrderDto cancel, @AuthenticationPrincipal CustomUserDetails userDetails) {
+
     }
 }
