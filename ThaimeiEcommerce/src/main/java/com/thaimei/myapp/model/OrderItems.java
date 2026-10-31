@@ -53,4 +53,9 @@ public class OrderItems {
     private ReturnItemStatus status = ReturnItemStatus.NOT_REQUESTED;
 
     private LocalDateTime requestedAt;
+
+    @Column(nullable = false)
+    private boolean cancelled = false;
+
+    private LocalDateTime cancelledAt;
 }

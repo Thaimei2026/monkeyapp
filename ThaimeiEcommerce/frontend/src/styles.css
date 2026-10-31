@@ -1703,6 +1703,55 @@ th {
   color: #7a4d00;
 }
 
+.order-card {
+  display: block;
+}
+
+.order-card-heading,
+.order-item,
+.order-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.order-card-heading {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border, #e7e7e7);
+}
+
+.order-card-heading h2,
+.order-item h3,
+.order-card-heading p,
+.order-item p {
+  margin: 0;
+}
+
+.order-card-heading p,
+.order-item p,
+.order-actions span {
+  color: var(--muted, #71717a);
+  font-size: 0.9rem;
+}
+
+.order-items {
+  display: grid;
+  gap: 14px;
+  padding: 16px 0;
+}
+
+.order-item .item-copy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.order-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
 .status-control {
   display: grid;
   grid-template-columns: minmax(106px, auto) minmax(150px, 1fr);

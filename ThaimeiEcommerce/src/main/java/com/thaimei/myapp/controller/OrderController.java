@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-
+import org.springframework.web.bind.annotation.PathVariable;
 
 import com.thaimei.myapp.security.CustomUserDetails;
 import com.thaimei.myapp.repository.UserRepository;
@@ -66,8 +66,9 @@ public class OrderController {
         return ResponseEntity.ok(Map.of("message","choose a refund or replacement Item"));
     }
 
-    @PatchMapping("/cancel")
-    public ResponseEntity<?> cancelOrder(@Valid @RequestBody CancelOrderDto cancel, @AuthenticationPrincipal CustomUserDetails userDetails) {
-
+    @PatchMapping("/{orderId}/cancel")
+    public ResponseEntity<?> cancelOrder(@Valid @RequestBody CancelOrderDto cancel,@PathVariable Long orderId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        orderService.canCelOrders(cancel, orderId, userDetails.getId());
+        return ResponseEntity.ok(Map.of("message", "Order Cancelled"));
     }
 }

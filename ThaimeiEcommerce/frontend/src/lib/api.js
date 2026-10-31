@@ -338,6 +338,11 @@ export const api = {
       method: "PATCH"
     }),
   orders: () => request(`${ORDER_API_BASE}/GetOrder`),
+  cancelOrder: (orderId, itemIds) =>
+    request(`${ORDER_API_BASE}/${encodeURIComponent(orderId)}/cancel`, {
+      method: "PATCH",
+      body: JSON.stringify({ itemId: itemIds.map(Number) })
+    }),
   requestReturn: (itemIds) =>
     request(`${ORDER_API_BASE}/returnProducts?${listQueryParam("itemIds", itemIds.map(Number))}`, {
       method: "PATCH"

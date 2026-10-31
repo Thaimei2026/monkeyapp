@@ -43,7 +43,9 @@ import jakarta.transaction.Transactional;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
+import com.thaimei.myapp.dto.CancelOrderDto;
 import com.thaimei.myapp.dto.ItemRequestDto;
+import com.thaimei.myapp.dto.OrderItemDto;
 import com.thaimei.myapp.repository.OrderItemRepo;
 
 @Service
@@ -225,6 +227,7 @@ public class OrderService {
         .toList();
     }
 
+    // populate the Order fields 
     private OrderResponseDto toOrderDto(Orders order) {
         OrderResponseDto dto = new OrderResponseDto();
         dto.setId(order.getId());
@@ -235,7 +238,20 @@ public class OrderService {
                 .map(this::toItemDto)
                 .toList());
         return dto;
-    } //work in progress, fix it as soon as possible
+    }
+
+    // populate the order items
+    private OrderItemDto toItemDto(OrderItems item) {
+        OrderItemDto dto = new OrderItemDto();
+        dto.setId(item.getId());
+        dto.setProductId(item.getProduct().getProductId());
+        dto.setImageURL(item.getProduct().getImageURL());
+        dto.setProductNameAtPurchase(item.getProductNameAtPurchase());
+        dto.setPriceAtPurchase(item.getPriceAtPurchase());
+        dto.setQuantity(item.getQuantity());
+        dto.setCancelled(item.isCancelled());
+        return dto;        
+    }
 
     
     public Slice <AdminOrderDto> getAdminOrders( @NonNull Pageable pageable) {
@@ -367,7 +383,65 @@ public class OrderService {
                 productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
             }
             order.setStatus(OrderStatusEnum.CANCELLED);
-        }
+        } 
     } 
+
+
+    // Order can be cancelled only when they're in these Statuses
+    private static final Set<OrderStatusEnum> CANCELLABLE =
+            Set.of(OrderStatusEnum.PENDING, OrderStatusEnum.PLACED, OrderStatusEnum.CONFIRMED, OrderStatusEnum.PACKED);
+
+    @Transactional 
+    public void canCelOrders(CancelOrderDto cancelDto, Long orderId, Long userId) {
+        Orders order = orderRepo.findByIdAndUser_Id(orderId, userId)
+        .orElseThrow(()-> new ResourceNotFoundException("Order not found")); 
+        
+        if(!CANCELLABLE.contains(order.getStatus())) {
+            throw new AppException("Order can no longer be cancelled", 409);
+        }
+
+        List<Long> ids = (cancelDto==null) ? null : cancelDto.getItemId();
+
+        //filters out the cancelled orders
+        List<OrderItems> active = order.getOrderItems().stream()
+            .filter(i -> !i.isCancelled())
+            .toList();
+
+        //cancellation happens here
+        List<OrderItems> toCancel;
+        if(ids == null || ids.isEmpty()) {
+            toCancel = active;
+        } else {
+            toCancel= active.stream()
+                    .filter(i -> ids.contains(i.getId()))
+                    .toList();
+            if(toCancel.size() != ids.size()) {
+                throw new AppException("invalid items in cancel request", 400);
+            }
+        }
+
+        if(toCancel.isEmpty()) {
+            throw new AppException("Nothing to cancel",409 );
+        }
+
+        // mark cancel = True and add up to refund
+        BigDecimal refundAmount = BigDecimal.ZERO;
+        for(OrderItems item : toCancel) {
+            item.setCancelled(true);
+            item.setCancelledAt(LocalDateTime.now());
+            productsRepo.addStock(item.getProduct().getProductId(), item.getQuantity());
+
+            refundAmount = refundAmount.add(item.getPriceAtPurchase().multiply(BigDecimal.valueOf(item.getQuantity())));
+        }
+
+        // if every item is cancelled, the whole order is cancelled 
+        // Yes. allMatch returns true only if every item in the list passes the test, and here the test is isCancelled(). If even one item is still active, it returns false.
+        boolean allCancelled = order.getOrderItems().stream().allMatch(OrderItems::isCancelled);
+        if(allCancelled) {
+            order.setStatus(OrderStatusEnum.CANCELLED);
+        }
+        // call refund here
+
+    }
 
 }
