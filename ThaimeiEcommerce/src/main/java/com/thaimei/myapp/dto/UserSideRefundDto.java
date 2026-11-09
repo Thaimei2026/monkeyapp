@@ -20,4 +20,5 @@ public class UserSideRefundDto {
     private BigDecimal amount;
     private RefundStatus status;
     private LocalDateTime createdAt;
+    private String rejectionReason;
 }

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   Package,
   RefreshCw,
+  RotateCcw,
   Save,
   ShieldCheck,
   ShoppingBag,
@@ -34,7 +35,8 @@ const userViews = {
 const sections = [
   { key: "users", label: "Users", icon: UsersRound },
   { key: "sellers", label: "Stores", icon: Store },
-  { key: "orders", label: "Orders", icon: ClipboardList }
+  { key: "orders", label: "Orders", icon: ClipboardList },
+  { key: "refunds", label: "Refunds", icon: RotateCcw }
 ];
 
 function label(value = "") {
@@ -123,6 +125,9 @@ export default function AdminPage() {
   const [ordersPage, setOrdersPage] = useState(0);
   const [ordersPageInfo, setOrdersPageInfo] = useState(pageState);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [refunds, setRefunds] = useState([]);
+  const [refundsLoading, setRefundsLoading] = useState(false);
+  const [savingRefundId, setSavingRefundId] = useState(null);
 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -158,6 +163,10 @@ export default function AdminPage() {
       loadOrders();
     }
   }, [section, ordersPage]);
+
+  useEffect(() => {
+    if (section === "refunds") loadRefunds();
+  }, [section]);
 
   useEffect(() => {
     if (section === "sellers" && selectedSellerId) {
@@ -266,6 +275,43 @@ export default function AdminPage() {
     }
   }
 
+  async function loadRefunds() {
+    setError("");
+    setRefundsLoading(true);
+    try {
+      const data = await api.adminRefunds();
+      setRefunds(Array.isArray(data?.refundResponseList) ? data.refundResponseList : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refund requests could not load");
+    } finally {
+      setRefundsLoading(false);
+    }
+  }
+
+  async function updateRefund(refund, action) {
+    const id = refund.id;
+    if (id === null || id === undefined) return;
+    let reason;
+    if (action === "reject") {
+      reason = window.prompt("Reason for rejecting this refund:")?.trim();
+      if (!reason) return;
+    }
+    setError("");
+    setNotice("");
+    setSavingRefundId(id);
+    try {
+      const response = action === "approve"
+        ? await api.approveRefund(id)
+        : await api.rejectRefund(id, reason);
+      setNotice(response?.message || `Refund ${action}d.`);
+      await loadRefunds();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Refund could not be ${action}d`);
+    } finally {
+      setSavingRefundId(null);
+    }
+  }
+
   function refreshCurrentSection() {
     setNotice("");
     if (section === "users") loadUsers();
@@ -274,6 +320,7 @@ export default function AdminPage() {
       if (selectedSellerId) loadSellerDetails(selectedSellerId, sellerOrdersPage);
     }
     if (section === "orders") loadOrders();
+    if (section === "refunds") loadRefunds();
   }
 
   function changeUserView(nextView) {
@@ -800,6 +847,33 @@ export default function AdminPage() {
               />
             </>
           )}
+        </section>
+      )}
+
+      {section === "refunds" && (
+        <section className="admin-panel">
+          <div className="panel-heading">
+            <div><h2>Refund requests</h2><p>{refunds.length} loaded</p></div>
+            <RotateCcw size={24} />
+          </div>
+          {refundsLoading && <LoadingBlock label="Loading refund requests" />}
+          {!refundsLoading && !refunds.length && <EmptyState title="No refund requests" text="Customer refund requests will appear here." />}
+          {!!refunds.length && <div className="table-wrap"><table>
+            <thead><tr><th>Refund</th><th>Item</th><th>Qty</th><th>Amount</th><th>Status</th><th>Requested</th><th>Reason</th><th>Actions</th></tr></thead>
+            <tbody>{refunds.map((refund) => {
+              const id = refund.id;
+              const pending = String(refund.status || "").toUpperCase() === "PENDING";
+              return <tr key={id}>
+                <td>#{id}</td><td>{refund.itemName || refund.ItemName || "Item"}</td><td>{refund.quantity ?? "-"}</td>
+                <td>{money(refund.amount)}</td><td><span className={`status status-${String(refund.status || "pending").toLowerCase()}`}>{label(refund.status || "PENDING")}</span></td>
+                <td>{dateTime(refund.requestedAt || refund.createdAt)}</td><td>{refund.rejectionReason || "-"}</td>
+                <td>{pending && <div className="admin-toolbar">
+                  <button className="button compact" type="button" disabled={savingRefundId === id} onClick={() => updateRefund(refund, "approve")}>Approve</button>
+                  <button className="button danger-subtle compact" type="button" disabled={savingRefundId === id} onClick={() => updateRefund(refund, "reject")}>Reject</button>
+                </div>}</td>
+              </tr>;
+            })}</tbody>
+          </table></div>}
         </section>
       )}
     </main>

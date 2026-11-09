@@ -53,5 +53,4 @@ public class SellerOrdersController {
         orderService.updateOrderStatus(statusDto, userDetails.getId(), orderId);
         return ResponseEntity.ok(Map.of("message","status updated successfully!"));
     }
-    // order status (pending, placed)
 }

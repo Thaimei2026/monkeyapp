@@ -15,6 +15,9 @@ export default function SellerSectionNav() {
       <Link className={view === "orders" ? "active" : ""} to="/seller?view=orders">
         Orders
       </Link>
+      <Link className={view === "refunds" ? "active" : ""} to="/seller?view=refunds">
+        Refunds
+      </Link>
     </nav>
   );
 }

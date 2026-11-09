@@ -50,6 +50,7 @@ import com.thaimei.myapp.repository.OrderItemRepo;
 
 @Service
 public class OrderService {
+    private final RefundService refundService;
     private final static int REFUND_WINDOW_DAYS = 7;
     private final OrderItemRepo orderItemRepo;
     private final OrderRepo orderRepo;
@@ -57,13 +58,14 @@ public class OrderService {
     private final StoreRepo storeRepo;
     private final UserRepository userRepository;
     private final ProductsRepo productsRepo;
-    public OrderService(OrderRepo orderRepo, OrderItemRepo orderItemRepo, ModelMapper modelMapper, ProductsRepo productsRepo, StoreRepo storeRepo, UserRepository userRepository) {
+    public OrderService(OrderRepo orderRepo, OrderItemRepo orderItemRepo, ModelMapper modelMapper, ProductsRepo productsRepo, StoreRepo storeRepo, UserRepository userRepository, RefundService refundService) {
         this.orderRepo=orderRepo;
         this.modelMapper=modelMapper;
         this.productsRepo=productsRepo;
         this.storeRepo = storeRepo;
         this.userRepository = userRepository;
         this.orderItemRepo = orderItemRepo;
+        this.refundService = refundService;
     }
 
     @Transactional
@@ -319,6 +321,7 @@ public class OrderService {
     private static final Map<OrderStatusEnum, Set<OrderStatusEnum>> ALLOWED_SELLER = Map.of(OrderStatusEnum.PLACED, Set.of(OrderStatusEnum.CONFIRMED, OrderStatusEnum.REJECTED),
     OrderStatusEnum.CONFIRMED, Set.of(OrderStatusEnum.PACKED));
 
+    // sellers can reject orders before the item is delivered.
     @Transactional 
     public void updateOrderStatus (UpdateOrderStatus statusDto, Long sellerId, Long orderId) {
         Orders order = orderRepo.findById(orderId)
@@ -343,8 +346,10 @@ public class OrderService {
             for(OrderItems oi: order.getOrderItems()) {
                 productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
             }
+
+            orderRepo.save(order);
+            refundService.refundOrderAutomatically(order, order.getOrderItems());
         }
-        // the payment also needs to be refunded.
     }
 
     @Transactional
@@ -379,6 +384,9 @@ public class OrderService {
         List<Orders> stale = orderRepo.findByStatusAndCreationTimeBefore(OrderStatusEnum.PENDING, cutoff);
 
         for (Orders order: stale) {
+            // if a payment is already attached to the order, leave it to webhook.
+            if(order.getPayment() != null) continue;
+
             for(OrderItems oi: order.getOrderItems()) {
                 productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
             }
@@ -440,7 +448,9 @@ public class OrderService {
         if(allCancelled) {
             order.setStatus(OrderStatusEnum.CANCELLED);
         }
-        // call refund here
+
+        orderRepo.save(order);
+        refundService.refundOrderAutomatically(order, toCancel);
 
     }
 

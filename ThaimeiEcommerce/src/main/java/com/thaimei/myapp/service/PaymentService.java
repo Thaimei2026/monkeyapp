@@ -114,7 +114,8 @@ public class PaymentService {
                 case FAILED -> OrderStatusEnum.FAILED;
                 default -> OrderStatusEnum.PENDING;
             };
-        
+            // this loops runs once per order that belongs to the payment. One checkout can create several Orders(onc per store).
+            // One payment rows represents the whole checkout and each order has its own payment_id pointing to it.
             for (String orderId: orderIds) {
                 Orders order = orderRepo.findById(Long.valueOf(orderId)).orElse(null);
                 if(order == null) {
@@ -122,6 +123,8 @@ public class PaymentService {
                     throw new WebhookProcessingException("orderId doesn't exist");
                 } 
                 order.setPayment(payment);
+                refundIfPaidAfterCancel(order, newOrderStatus);
+
                 if(order.getStatus() == OrderStatusEnum.PENDING) {
                     if(newOrderStatus == OrderStatusEnum.PLACED) {
                         order.setStatus(OrderStatusEnum.PLACED);
@@ -146,8 +149,13 @@ public class PaymentService {
             System.out.println("no payment found for PaymentIntent:" + charge.getPaymentIntent());
             return false;
         }
+
+        // only when the whole charge is refunded, not on partial refund
+        if(Boolean.TRUE.equals(charge.getRefunded())) {
         payment.setPaymentStatus(PaymentStatus.REFUNDED);
         paymentRepo.save(payment);
+        }
+        
 
         for(Refund r: charge.getRefunds().getData()) {
             String refundRecordId = r.getMetadata().get("refundRecord");
@@ -180,5 +188,21 @@ public class PaymentService {
     public void markEventProcessed(String eventId) {
         //constructor injector, reliable if there are less fields
         processWebhookRepo.save(new ProcessWebhook(eventId, Instant.now()));
+    }
+
+    // failed refund event from Stripe, this is a new webhook event type that Stripe sends when a refund fails, we need to handle it to update our internal refund status.
+    @Transactional 
+    public boolean handleRefundFailed(Refund stripeRefund) {
+        String idStr = stripeRefund.getMetadata().get("refundRecord");
+        if(idStr == null) return true;
+            refundService.failRefund(Long.valueOf(idStr));
+            return true;
+    }
+
+    // a payment succeeded for an order that the abandoned-order job already cancelled: money was taken so refund it.
+    private void refundIfPaidAfterCancel(Orders order, OrderStatusEnum newStatus) {
+        if(order.getStatus() == OrderStatusEnum.CANCELLED && newStatus == OrderStatusEnum.PLACED) {
+            refundService.refundOrderAutomatically(order, order.getOrderItems());
+        }
     }
 }

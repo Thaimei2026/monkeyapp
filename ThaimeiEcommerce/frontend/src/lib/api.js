@@ -319,7 +319,7 @@ export const api = {
       })
     }),
 
-  productsSlice: (page = 0, size = 20) => request(pagedPath("/customers/productList", page, size)),
+  productsSlice: (page = 0, size = 20) => request(pagedPath("/customers/productList", page, size), { auth: false }),
   products: (page = 0, size = 20) => api.productsSlice(page, size).then(contentPayload),
   product: (id) => request(`/customers/productDetails/${id}`),
   searchStore: (storeName) => request(`/customers/search/store?${new URLSearchParams({ storeName })}`),
@@ -390,6 +390,11 @@ export const api = {
     request(`/admin/refund/approve/${refundId}`, {
       method: "PATCH"
     }),
+  rejectRefund: (refundId, reason) =>
+    request(`/admin/refund/reject/${refundId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ reason })
+    }),
   adminSellerOrders: (sellerId, page = 0, size = 20) =>
     request(pagedPath(`/admin/api/sellerOrdersForAdmin/${sellerId}`, page, size)).then(slicePayload),
   adminSellerStores: (sellerId) => request(`/admin/api/getAllStoresBySeller/${sellerId}`),
@@ -422,6 +427,12 @@ export const api = {
       body: JSON.stringify({ openCloseStore })
     }),
   sellerOrdersSlice: (page = 0, size = 20) => request(pagedPath("/sellers/orders", page, size)).then(slicePayload),
+  sellerRefunds: () => request("/sellers/refunds"),
+  approveSellerRefund: (refundId) => request(`/sellers/refunds/${refundId}/approve`, { method: "PATCH" }),
+  rejectSellerRefund: (refundId, reason) => request(`/sellers/refunds/${refundId}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({ reason })
+  }),
   sellerStoreOrdersSlice: (storeId, page = 0, size = 20) =>
     request(pagedPath(`/sellers/store/${storeId}`, page, size)).then(slicePayload),
   updateSellerOrderStatus: (orderId, status) =>

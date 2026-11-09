@@ -1747,6 +1747,34 @@ th {
   gap: 12px;
 }
 
+.order-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.returns-order-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.returns-order-link span { flex: 1; }
+
+@media (max-width: 640px) {
+  .order-item { align-items: flex-start; }
+  .order-item-actions { align-items: flex-end; flex-direction: column; }
+  .order-item-actions .button { font-size: 12px; }
+  .returns-order-link { align-items: flex-start; flex-wrap: wrap; }
+}
+
 .order-actions {
   justify-content: flex-start;
   flex-wrap: wrap;

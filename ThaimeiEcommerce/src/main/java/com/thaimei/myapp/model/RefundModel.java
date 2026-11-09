@@ -48,6 +48,9 @@ public class RefundModel {
     @Enumerated(EnumType.STRING)
     private RefundStatus status;
 
+    @Column(length = 500)
+    private String rejectionReason;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

@@ -17,6 +17,7 @@ import com.stripe.net.Webhook;
 import com.stripe.model.Event;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.Refund;
 import com.stripe.model.Charge;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -79,6 +80,10 @@ public class PaymentController {
                     Charge refundedCharge=(Charge) event.getDataObjectDeserializer().getObject().orElse(null);
                     success = refundedCharge != null && paymentService.handleChargeRefunded(refundedCharge);
                     break;
+
+                case "refund.failed":
+                    Refund failedRefund= (Refund) event.getDataObjectDeserializer().getObject().orElse(null);
+                    success = failedRefund != null && paymentService.handleRefundFailed(failedRefund);
 
                 default: 
                     System.out.println("Unhandled event type: " + eventType);

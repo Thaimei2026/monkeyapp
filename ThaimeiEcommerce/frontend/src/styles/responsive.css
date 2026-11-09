@@ -9,9 +9,15 @@
 }
 
 @media (max-width: 640px) {
-  .topbar { min-height: auto; }
-  .nav { justify-content: flex-start; }
-  .nav a { padding: 8px 10px; font-size: 12px; }
+  .topbar { min-height: auto; grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr); gap: 8px; padding: 10px 14px; }
+  .brand { min-width: 0; gap: 8px; }
+  .brand-mark { width: 36px; height: 36px; }
+  .brand strong { font-size: 16px; }
+  .brand small { font-size: 10px; }
+  .nav { grid-column: 1 / -1; grid-row: 2; justify-content: center; flex-wrap: wrap; padding: 0; overflow: visible; }
+  .nav a { width: auto; padding: 6px 8px; font-size: 12px; white-space: nowrap; }
+  .nav a.active, .nav a:hover { background: transparent; box-shadow: none; color: var(--brand-dark); }
+  .topbar > .button.compact, .topbar > .account-actions { grid-column: 3; grid-row: 1; justify-self: end; width: auto; min-width: 0; }
   .nav a svg { width: 15px; }
   .announcement-bar { justify-content: space-between; gap: 8px; font-size: 10px; }
   .account-chip strong { display: none; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowRight, PackageCheck, ShoppingBag } from "lucide-react";
+import { ArrowRight, PackageCheck, RotateCcw, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { EmptyState, ErrorBanner, LoadingBlock } from "../components/StateBlocks";
@@ -15,6 +15,8 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyOrderId, setBusyOrderId] = useState(null);
+  const [busyItemId, setBusyItemId] = useState(null);
+  const [notice, setNotice] = useState("");
 
   const loadOrders = useCallback(async () => {
     setError("");
@@ -45,6 +47,23 @@ export default function OrdersPage() {
     }
   }
 
+  async function requestItemAction(item, action) {
+    setBusyItemId(item.id);
+    setError("");
+    setNotice("");
+    try {
+      const response = action === "refund"
+        ? await api.requestRefund([{ itemId: item.id, quantity: item.quantity }])
+        : await api.requestReturn([item.id]);
+      setNotice(response?.message || `${action === "refund" ? "Refund" : "Return"} request submitted for ${item.productNameAtPurchase || "item"}.`);
+      await loadOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `${action} request could not be submitted`);
+    } finally {
+      setBusyItemId(null);
+    }
+  }
+
   return (
     <main className="page">
       <div className="page-heading">
@@ -57,6 +76,7 @@ export default function OrdersPage() {
       </div>
 
       {error && <ErrorBanner message={error} />}
+      {notice && <div className="banner success">{notice}</div>}
       {loading && <LoadingBlock label="Loading orders" />}
       {!loading && !orders.length && (
         <div className="empty-state empty-state-action">
@@ -96,7 +116,19 @@ export default function OrdersPage() {
                           <p>{item.cancelled ? "Cancelled" : `Qty ${item.quantity}`} · {formatPrice(item.priceAtPurchase)} each</p>
                         </div>
                       </div>
-                      <strong>{formatPrice(itemTotal)}</strong>
+                      <div className="order-item-actions">
+                        <strong>{formatPrice(itemTotal)}</strong>
+                        {!item.cancelled && status === "CONFIRMED" && (!item.status || String(item.status).toUpperCase() === "NOT_REQUESTED") && (
+                          <>
+                            <button className="button secondary compact" type="button" disabled={busyItemId === item.id} onClick={() => requestItemAction(item, "return")}>
+                              <RotateCcw size={15} /> Request return
+                            </button>
+                            <button className="button compact" type="button" disabled={busyItemId === item.id} onClick={() => requestItemAction(item, "refund")}>
+                              {busyItemId === item.id ? "Submitting..." : "Request refund"}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

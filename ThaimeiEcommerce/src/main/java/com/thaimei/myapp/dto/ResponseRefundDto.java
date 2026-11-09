@@ -19,4 +19,5 @@ public class ResponseRefundDto {
     private Integer quantity;
     private BigDecimal amount;
     private LocalDateTime requestedAt;
+    private String rejectionReason;
 }
