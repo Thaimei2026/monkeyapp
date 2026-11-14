@@ -30,9 +30,11 @@ import com.thaimei.myapp.model.User;
 import com.thaimei.myapp.repository.PaymentRepo;
 import com.thaimei.myapp.repository.ProductsRepo;
 import com.thaimei.myapp.dto.OrderSummary;
+import com.thaimei.myapp.repository.CartItemRepository;
 
 @Service
 public class PaymentService {
+    private final CartItemRepository cartItemRepo;
     private final RefundService refundService;
     private final PaymentRepo paymentRepo;
     private final ModelMapper modelMapper;
@@ -40,7 +42,7 @@ public class PaymentService {
     private final UserRepository userRepo;
     private final OrderRepo orderRepo;
     private final ProductsRepo productsRepo;
-    public PaymentService(ProductsRepo productsRepo, PaymentRepo paymentRepo, ModelMapper modelMapper, ProcessWebhookRepo processWebhookRepo, UserRepository userRepo, OrderRepo orderRepo, RefundService refundService) {
+    public PaymentService(ProductsRepo productsRepo, PaymentRepo paymentRepo, ModelMapper modelMapper, ProcessWebhookRepo processWebhookRepo, UserRepository userRepo, OrderRepo orderRepo, RefundService refundService, CartItemRepository cartItemRepo) {
         this.productsRepo=productsRepo;
         this.paymentRepo=paymentRepo;
         this.modelMapper=modelMapper;
@@ -48,6 +50,7 @@ public class PaymentService {
         this.userRepo=userRepo;
         this.orderRepo=orderRepo;
         this.refundService=refundService;
+        this.cartItemRepo = cartItemRepo;
     }
     public PaymentDto getPaymentDetailsByPaymentId(String paymentId, User user) {
         Payment paymentDetails =paymentRepo.findByPaymentId(paymentId)
@@ -114,6 +117,8 @@ public class PaymentService {
                 case FAILED -> OrderStatusEnum.FAILED;
                 default -> OrderStatusEnum.PENDING;
             };
+
+            boolean anyPlaced = false;
             // this loops runs once per order that belongs to the payment. One checkout can create several Orders(onc per store).
             // One payment rows represents the whole checkout and each order has its own payment_id pointing to it.
             for (String orderId: orderIds) {
@@ -128,6 +133,7 @@ public class PaymentService {
                 if(order.getStatus() == OrderStatusEnum.PENDING) {
                     if(newOrderStatus == OrderStatusEnum.PLACED) {
                         order.setStatus(OrderStatusEnum.PLACED);
+                        anyPlaced = true;
                     } else if(newOrderStatus == OrderStatusEnum.FAILED) {
                         for(OrderItems oi: order.getOrderItems()) {
                             productsRepo.addStock(oi.getProduct().getProductId(), oi.getQuantity());
@@ -136,6 +142,9 @@ public class PaymentService {
                     }
                 }
                 orderRepo.save(order);
+            }
+            if(anyPlaced) {
+                cartItemRepo.deleteAllByUserId(user.getId());
             }
             return true;
         }

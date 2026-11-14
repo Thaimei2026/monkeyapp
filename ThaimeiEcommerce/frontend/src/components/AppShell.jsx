@@ -27,7 +27,6 @@ export default function AppShell({ session, onLogout }) {
             <NavLink to="/cart">Cart</NavLink>
             <NavLink to="/orders">Order history</NavLink>
             <NavLink to="/payments">Payments</NavLink>
-            <NavLink to="/returns">Returns</NavLink>
           </>}
           {session && !isAdmin && <NavLink to="/profile">Profile</NavLink>}
           {isSeller && <NavLink to="/seller" end>Seller</NavLink>}
@@ -49,7 +48,7 @@ export default function AppShell({ session, onLogout }) {
           <p>A more thoughtful way to discover, buy, and grow with independent commerce.</p>
         </div>
         {session && <div className="footer-links">
-          <div><span>Marketplace</span><Link to="/products">Browse Products</Link>{isCustomer && <Link to="/orders">Your orders</Link>}{isCustomer && <Link to="/returns">Returns</Link>}</div>
+          <div><span>Marketplace</span><Link to="/products">Browse Products</Link>{isCustomer && <Link to="/orders">Your orders</Link>}</div>
           <div><span>Account</span><Link to={isSeller ? "/seller" : isAdmin ? "/admin" : "/profile"}>Your workspace</Link>{isCustomer && <Link to="/payments">Payment status</Link>}</div>
         </div>}
         <div className="footer-bottom"><span>© {new Date().getFullYear()} Thaimei</span></div>

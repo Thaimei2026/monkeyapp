@@ -34,12 +34,30 @@ export default function OrdersPage() {
     loadOrders();
   }, [loadOrders]);
 
+  useEffect(() => {
+    if (!notice && !error) return undefined;
+    const timeout = window.setTimeout(() => {
+      setNotice("");
+      setError("");
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [notice, error]);
+
   async function cancelItems(order, itemIds) {
     setBusyOrderId(order.id);
     setError("");
+    setNotice("");
     try {
       await api.cancelOrder(order.id, itemIds);
-      await loadOrders();
+      const cancellingWholeOrder = itemIds.length === order.orderItems.filter((item) => !item.cancelled).length;
+      setNotice(cancellingWholeOrder
+        ? "Order cancelled. Payment will be refunded within 24 hours."
+        : "Item cancelled. Payment will be refunded within 24 hours.");
+      try {
+        await loadOrders();
+      } catch {
+        // Keep the cancellation confirmation visible even if refreshing order history fails.
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Order could not be cancelled");
     } finally {
@@ -47,18 +65,16 @@ export default function OrdersPage() {
     }
   }
 
-  async function requestItemAction(item, action) {
+  async function requestItemReturn(item) {
     setBusyItemId(item.id);
     setError("");
     setNotice("");
     try {
-      const response = action === "refund"
-        ? await api.requestRefund([{ itemId: item.id, quantity: item.quantity }])
-        : await api.requestReturn([item.id]);
-      setNotice(response?.message || `${action === "refund" ? "Refund" : "Return"} request submitted for ${item.productNameAtPurchase || "item"}.`);
+      const response = await api.requestReturn([item.id]);
+      setNotice(response?.message || `Return requested for ${item.productNameAtPurchase || "item"}.`);
       await loadOrders();
     } catch (err) {
-      setError(err instanceof Error ? err.message : `${action} request could not be submitted`);
+      setError(err instanceof Error ? err.message : "Return request could not be submitted");
     } finally {
       setBusyItemId(null);
     }
@@ -118,22 +134,25 @@ export default function OrdersPage() {
                       </div>
                       <div className="order-item-actions">
                         <strong>{formatPrice(itemTotal)}</strong>
-                        {!item.cancelled && status === "CONFIRMED" && (!item.status || String(item.status).toUpperCase() === "NOT_REQUESTED") && (
-                          <>
-                            <button className="button secondary compact" type="button" disabled={busyItemId === item.id} onClick={() => requestItemAction(item, "return")}>
-                              <RotateCcw size={15} /> Request return
-                            </button>
-                            <button className="button compact" type="button" disabled={busyItemId === item.id} onClick={() => requestItemAction(item, "refund")}>
-                              {busyItemId === item.id ? "Submitting..." : "Request refund"}
-                            </button>
-                          </>
+                        {!item.cancelled && canCancel && (
+                          <button className="button secondary compact" type="button" disabled={busyOrderId === order.id} onClick={() => cancelItems(order, [item.id])}>
+                            {busyOrderId === order.id ? "Cancelling..." : "Cancel item"}
+                          </button>
+                        )}
+                        {!item.cancelled && status === "DELIVERED" && (!item.status || String(item.status).toUpperCase() === "NOT_REQUESTED") && (
+                          <button className="button secondary compact" type="button" disabled={busyItemId === item.id} onClick={() => requestItemReturn(item)}>
+                            <RotateCcw size={15} /> {busyItemId === item.id ? "Submitting..." : "Request return"}
+                          </button>
+                        )}
+                        {!item.cancelled && item.status && String(item.status).toUpperCase() !== "NOT_REQUESTED" && (
+                          <span className="status">{String(item.status).replaceAll("_", " ")}</span>
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-              {canCancel && (
+              {canCancel && activeItems.length > 1 && (
                 <div className="order-actions">
                   <button
                     className="button secondary compact"
@@ -143,9 +162,7 @@ export default function OrdersPage() {
                   >
                     {busyOrderId === order.id ? "Cancelling…" : "Cancel order"}
                   </button>
-                  {activeItems.length > 1 && (
-                    <span>To cancel one item, use its item-level action when available.</span>
-                  )}
+                  <span>Cancel every remaining item in this order.</span>
                 </div>
               )}
             </article>

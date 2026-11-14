@@ -51,7 +51,7 @@ import com.thaimei.myapp.repository.OrderItemRepo;
 @Service
 public class OrderService {
     private final RefundService refundService;
-    private final static int REFUND_WINDOW_DAYS = 7;
+    private final static int REFUND_WINDOW_HOURS = 24;
     private final OrderItemRepo orderItemRepo;
     private final OrderRepo orderRepo;
     private final ModelMapper modelMapper;
@@ -361,8 +361,12 @@ public class OrderService {
             if(!order.getUser().getId().equals(userId)) {
                 throw new AppException("You don't own this order", 400);
             }
+
+            if(order.getDeliveredAt() ==  null) {
+                throw new AppException("Order has not been delivered yet", 400);
+            }
             
-            if(order.getDeliveredAt()== null || LocalDateTime.now().isAfter(order.getDeliveredAt().plusDays(REFUND_WINDOW_DAYS))) {
+            if(LocalDateTime.now().isAfter(order.getDeliveredAt().plusHours(REFUND_WINDOW_HOURS))) {
                 throw new AppException("Refund windows has expired", 400);
             }
 

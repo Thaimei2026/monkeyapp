@@ -55,13 +55,17 @@ export default function CartPage() {
     setError("");
     setLoading(true);
 
-    Promise.all([api.cart(), api.products(0, 100)])
-      .then(([nextCart, nextProducts]) => {
-        setCart(nextCart);
-        setProducts(nextProducts);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Cart could not load"))
-      .finally(() => setLoading(false));
+    try {
+      const [nextCart, nextProducts] = await Promise.all([api.cart(), api.products(0, 100)]);
+      setCart(nextCart);
+      setProducts(nextProducts);
+      return nextCart;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cart could not load");
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function placeOrders() {
@@ -160,14 +164,17 @@ export default function CartPage() {
   }
 
   async function handlePaymentComplete({ payment, hasFailedOrders }) {
+    const refreshedCart = await loadCart();
+    const cartWasCleared = Array.isArray(refreshedCart?.items) && refreshedCart.items.length === 0;
     setNotice(
       hasFailedOrders
         ? "Payment succeeded, but one or more orders could not be fulfilled. Review the payment status for order details."
-        : payment
-          ? "Payment confirmed and recorded."
-          : "Payment confirmed. Payment status will update after the webhook."
+        : cartWasCleared
+          ? "Payment confirmed. Your cart has been cleared."
+          : payment
+            ? "Payment confirmed, but the cart could not be verified as cleared. Refresh the cart to check."
+            : "Payment confirmed. Payment status will update after the webhook."
     );
-    await loadCart();
   }
 
   return (

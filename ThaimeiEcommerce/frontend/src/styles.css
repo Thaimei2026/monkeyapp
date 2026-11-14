@@ -1591,6 +1591,21 @@ td small,
   font-weight: 700;
 }
 
+.banner {
+  position: fixed;
+  top: 88px;
+  left: 50%;
+  z-index: 20;
+  width: min(680px, calc(100vw - 32px));
+  margin: 0;
+  transform: translateX(-50%);
+  box-shadow: 0 12px 32px rgba(24, 32, 28, 0.16);
+}
+
+@media (max-width: 640px) {
+  .banner { top: 76px; }
+}
+
 .banner.error {
   background: #fff0ee;
   color: #9a291d;
